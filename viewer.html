@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GPS Viewer</title>
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY"></script>
+</head>
+<body>
+
+<input id="code" placeholder="Enter Tracking Code">
+<button onclick="track()">Track</button>
+
+<div id="map" style="height:90vh"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  databaseURL: "https://gps-tracker-56219-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "gps-tracker-56219"
+};
+
+initializeApp(firebaseConfig);
+const db = getDatabase();
+
+const map = new google.maps.Map(document.getElementById("map"), {
+  zoom: 15,
+  center: { lat: 12.97, lng: 77.59 }
+});
+
+let marker;
+
+window.track = function () {
+  const code = document.getElementById("code").value;
+
+  onValue(ref(db, "locations/" + code), snap => {
+    const d = snap.val();
+    if (!d) return;
+
+    const pos = { lat: d.lat, lng: d.lng };
+
+    if (!marker) {
+      marker = new google.maps.Marker({ position: pos, map });
+    } else {
+      marker.setPosition(pos);
+    }
+  });
+};
+</script>
+</body>
+</html>
+
