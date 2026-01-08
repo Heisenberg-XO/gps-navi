@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GPS Sender</title>
+</head>
+<body>
+<h2>Sending Live Location...</h2>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  databaseURL: "https://gps-tracker-56219-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "gps-tracker-56219"
+};
+
+initializeApp(firebaseConfig);
+const db = getDatabase();
+
+const TRACKING_CODE = "TEST123"; // SAME CODE EVERYWHERE
+
+navigator.geolocation.watchPosition(pos => {
+  set(ref(db, "locations/" + TRACKING_CODE), {
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    lastUpdated: Date.now()
+  });
+});
+</script>
+</body>
+</html>
+
