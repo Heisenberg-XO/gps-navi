@@ -1,4 +1,4 @@
-/**************** LOCATION DATA (BANGALORE) ****************/
+/**************** LOCATION COORDINATES (BANGALORE) ****************/
 const locations = {
     "Hebbal": [13.0358, 77.5970],
     "Malleshwaram": [13.0031, 77.5640],
@@ -12,21 +12,21 @@ const locations = {
 
 /**************** GRAPH ****************/
 const graph = {
-    "Hebbal": {"Malleshwaram": 7},
-    "Malleshwaram": {"Hebbal": 7, "Majestic": 5},
-    "Majestic": {"Malleshwaram": 5, "KR Market": 3},
-    "KR Market": {"Majestic": 3, "Jayanagar": 6},
-    "Jayanagar": {"KR Market": 6, "Banashankari": 4},
-    "Banashankari": {"Jayanagar": 4, "Silk Board": 6},
-    "Silk Board": {"Banashankari": 6, "Electronic City": 10},
-    "Electronic City": {"Silk Board": 10}
+    "Hebbal": { "Malleshwaram": 7 },
+    "Malleshwaram": { "Hebbal": 7, "Majestic": 5 },
+    "Majestic": { "Malleshwaram": 5, "KR Market": 3 },
+    "KR Market": { "Majestic": 3, "Jayanagar": 6 },
+    "Jayanagar": { "KR Market": 6, "Banashankari": 4 },
+    "Banashankari": { "Jayanagar": 4, "Silk Board": 6 },
+    "Silk Board": { "Banashankari": 6, "Electronic City": 10 },
+    "Electronic City": { "Silk Board": 10 }
 };
 
-/**************** MAP ****************/
+/**************** MAP INITIALIZATION ****************/
 const map = L.map("map").setView([12.9716, 77.5946], 11);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "© OpenStreetMap"
+    attribution: "© OpenStreetMap contributors"
 }).addTo(map);
 
 /**************** ROUTING ****************/
@@ -99,36 +99,15 @@ function findRoute() {
     }).addTo(map);
 
     document.getElementById("output").innerHTML = `
-        <b>Shortest Route:</b><br>${result.path.join(" → ")}<br>
+        <b>Shortest Route:</b><br>
+        ${result.path.join(" → ")}<br>
         <b>Total Distance:</b> ${result.distance} km
     `;
 }
 
-/**************** LIVE TRACKING + FIREBASE ****************/
-
+/**************** LIVE TRACKING (BASIC) ****************/
 let liveMarker = null;
 let watchID = null;
-let pathLine = L.polyline([], { color: "red" }).addTo(map);
-
-// Stats
-let lastLat = null, lastLng = null, lastTime = null;
-let startTime = null, totalDistance = 0;
-
-// Firebase reference (created in HTML)
-const trackingRef = database.ref("tracking/live");
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-
-    const a = Math.sin(dLat / 2) ** 2 +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) ** 2;
-
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
 
 function startLiveTracking() {
     if (!navigator.geolocation) {
@@ -136,66 +115,26 @@ function startLiveTracking() {
         return;
     }
 
-    // Reset stats
-    lastLat = lastLng = lastTime = startTime = null;
-    totalDistance = 0;
-    pathLine.setLatLngs([]);
-
     watchID = navigator.geolocation.watchPosition(
         pos => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-            const heading = pos.coords.heading ?? "N/A";
-            const now = Date.now();
 
-            if (!startTime) startTime = now;
-
-            if (lastLat !== null) {
-                totalDistance += calculateDistance(lastLat, lastLng, lat, lng);
-            }
-
-            let speed = 0;
-            if (lastTime) {
-                const dt = (now - lastTime) / 3600000;
-                if (dt > 0) speed = totalDistance / dt;
-            }
-
-            lastLat = lat;
-            lastLng = lng;
-            lastTime = now;
-
-            // 🔥 WRITE TO FIREBASE
-            trackingRef.set({
-                lat,
-                lng,
-                speed,
-                distance: totalDistance,
-                heading,
-                timestamp: now
-            });
-
-            // Local marker
             if (!liveMarker) {
-                liveMarker = L.marker([lat, lng]).addTo(map)
-                    .bindPopup("📍 Live Device");
+                liveMarker = L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup("📍 Live Device")
+                    .openPopup();
             } else {
                 liveMarker.setLatLng([lat, lng]);
             }
 
-            pathLine.addLatLng([lat, lng]);
-            map.setView([lat, lng], 15);
-
-            const elapsed = Math.floor((now - startTime) / 1000);
-            const min = Math.floor(elapsed / 60);
-            const sec = elapsed % 60;
+            map.setView([lat, lng], 14);
 
             document.getElementById("output").innerHTML = `
                 <b>Status:</b> Tracking Active ✅<br>
-                <b>Time:</b> ${min}m ${sec}s<br>
-                <b>Distance:</b> ${totalDistance.toFixed(2)} km<br>
-                <b>Speed:</b> ${speed.toFixed(2)} km/h<br>
-                <b>Heading:</b> ${heading}°<br>
-                <b>Updated:</b> ${new Date(now).toLocaleTimeString()}
+                <b>Latitude:</b> ${lat.toFixed(6)}<br>
+                <b>Longitude:</b> ${lng.toFixed(6)}
             `;
         },
         () => alert("Location permission denied"),
@@ -210,18 +149,3 @@ function stopLiveTracking() {
         document.getElementById("output").innerHTML = "❌ Tracking Stopped";
     }
 }
-
-/**************** FIREBASE LIVE READ (VIEWER SIDE) ****************/
-trackingRef.on("value", snapshot => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    const { lat, lng } = data;
-
-    if (!liveMarker) {
-        liveMarker = L.marker([lat, lng]).addTo(map)
-            .bindPopup("📡 Tracked Device");
-    } else {
-        liveMarker.setLatLng([lat, lng]);
-    }
-});
