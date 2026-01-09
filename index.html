@@ -72,3 +72,30 @@
 
 </body>
 </html>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<!-- Firebase SDKs (COMPAT VERSION – REQUIRED) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Firebase Configuration -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpuOPa5sDv4ieozsikboKoajw-g37R_Ug",
+    authDomain: "gps-tracker-56219.firebaseapp.com",
+    databaseURL: "https://gps-tracker-56219-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "gps-tracker-56219",
+    storageBucket: "gps-tracker-56219.appspot.com",
+    messagingSenderId: "466353287170",
+    appId: "1:466353287170:web:b4081ea1453bccf81e771b"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+</script>
+
+<!-- Your main JS file (MUST BE LAST) -->
+<script src="script.js"></script>
