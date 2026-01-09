@@ -1,4 +1,4 @@
-// Location coordinates (Bangalore)
+/**************** LOCATIONS (BANGALORE) ****************/
 const locations = {
     "Hebbal": [13.0358, 77.5970],
     "Malleshwaram": [13.0031, 77.5640],
@@ -10,7 +10,7 @@ const locations = {
     "Electronic City": [12.8452, 77.6600]
 };
 
-// Graph (distance in km)
+/**************** GRAPH ****************/
 const graph = {
     "Hebbal": {"Malleshwaram": 7},
     "Malleshwaram": {"Hebbal": 7, "Majestic": 5},
@@ -22,18 +22,17 @@ const graph = {
     "Electronic City": {"Silk Board": 10}
 };
 
-// Initialize Map (Bangalore center)
+/**************** MAP ****************/
 const map = L.map('map').setView([12.9716, 77.5946], 11);
 
-// OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
+    attribution: '© OpenStreetMap'
 }).addTo(map);
 
+/**************** ROUTING ****************/
 let markers = [];
 let routeLine = null;
 
-// Dijkstra
 function dijkstra(start, end) {
     let dist = {}, prev = {}, visited = [];
     for (let node in graph) dist[node] = Infinity;
@@ -62,6 +61,7 @@ function dijkstra(start, end) {
         end = prev[end];
         path.unshift(end);
     }
+
     return { path, distance: dist[path[path.length - 1]] };
 }
 
@@ -74,73 +74,114 @@ function clearMap() {
 function findRoute() {
     clearMap();
 
-    let start = document.getElementById("start").value.trim();
-    let end = document.getElementById("end").value.trim();
+    const start = document.getElementById("start").value.trim();
+    const end = document.getElementById("end").value.trim();
 
     if (!(start in graph) || !(end in graph)) {
         document.getElementById("output").innerHTML = "❌ Invalid Location";
         return;
     }
 
-    let result = dijkstra(start, end);
+    const result = dijkstra(start, end);
 
-    // Markers
     result.path.forEach(loc => {
         let marker = L.marker(locations[loc]).addTo(map).bindPopup(loc);
         markers.push(marker);
     });
 
-    // Draw route
-    let waypoints = result.path.map(loc =>
-    L.latLng(locations[loc][0], locations[loc][1])
-);
+    routeLine = L.Routing.control({
+        waypoints: result.path.map(l => L.latLng(...locations[l])),
+        addWaypoints: false,
+        draggableWaypoints: false,
+        show: false,
+        lineOptions: { styles: [{ color: 'blue', weight: 6 }] }
+    }).addTo(map);
 
-routeLine = L.Routing.control({
-    waypoints: waypoints,
-    routeWhileDragging: false,
-    addWaypoints: false,
-    draggableWaypoints: false,
-    show: false,
-    lineOptions: {
-        styles: [{ color: 'blue', weight: 6 }]
-    }
-}).addTo(map);
-
-    document.getElementById("output").innerHTML =
-        `<b>Shortest Route:</b><br>${result.path.join(" → ")}<br><br>
-         <b>Total Distance:</b> ${result.distance} km`;
+    document.getElementById("output").innerHTML = `
+        <b>Shortest Route:</b><br>${result.path.join(" → ")}<br>
+        <b>Total Distance:</b> ${result.distance} km
+    `;
 }
-// Live tracking marker
+
+/**************** LIVE TRACKING + INTELLIGENCE ****************/
 let liveMarker = null;
+let watchID = null;
+let lastLat = null, lastLng = null, lastTime = null;
+let startTime = null;
+let totalDistance = 0;
+let pathLine = L.polyline([], { color: "red" }).addTo(map);
 
-// Track phone location
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1*Math.PI/180) *
+              Math.cos(lat2*Math.PI/180) *
+              Math.sin(dLon/2)**2;
+
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
 function startLiveTracking() {
-    if (!navigator.geolocation) {
-        alert("Geolocation not supported");
-        return;
-    }
+    lastLat = lastLng = lastTime = startTime = null;
+    totalDistance = 0;
+    pathLine.setLatLngs([]);
 
-    navigator.geolocation.watchPosition(
-        pos => {
-            let lat = pos.coords.latitude;
-            let lng = pos.coords.longitude;
+    watchID = navigator.geolocation.watchPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const heading = pos.coords.heading ?? "N/A";
+        const now = Date.now();
 
-            if (!liveMarker) {
-                liveMarker = L.marker([lat, lng])
-                    .addTo(map)
-                    .bindPopup("📍 Live Device Location")
-                    .openPopup();
-            } else {
-                liveMarker.setLatLng([lat, lng]);
-            }
+        if (!startTime) startTime = now;
 
-            map.setView([lat, lng], 14);
-        },
-        err => {
-            alert("Location permission denied");
-        },
-        {
-            enableHighAccuracy: true
+        if (lastLat !== null) {
+            totalDistance += calculateDistance(lastLat, lastLng, lat, lng);
         }
-    );
+
+        let speed = 0;
+        if (lastTime) {
+            const dt = (now - lastTime) / 3600000;
+            if (dt > 0) speed = totalDistance / dt;
+        }
+
+        lastLat = lat;
+        lastLng = lng;
+        lastTime = now;
+
+        if (!liveMarker) {
+            liveMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup("📍 Live Device");
+        } else {
+            liveMarker.setLatLng([lat, lng]);
+        }
+
+        pathLine.addLatLng([lat, lng]);
+        map.setView([lat, lng], 15);
+
+        const elapsed = Math.floor((now - startTime) / 1000);
+        const min = Math.floor(elapsed / 60);
+        const sec = elapsed % 60;
+
+        document.getElementById("output").innerHTML = `
+            <b>Status:</b> Tracking Active ✅<br>
+            <b>Time:</b> ${min}m ${sec}s<br>
+            <b>Distance:</b> ${totalDistance.toFixed(2)} km<br>
+            <b>Speed:</b> ${speed.toFixed(2)} km/h<br>
+            <b>Heading:</b> ${heading}°<br>
+            <b>Updated:</b> ${new Date(now).toLocaleTimeString()}
+        `;
+    }, () => alert("Location permission denied"), {
+        enableHighAccuracy: true
+    });
+}
+
+function stopLiveTracking() {
+    if (watchID) {
+        navigator.geolocation.clearWatch(watchID);
+        watchID = null;
+        document.getElementById("output").innerHTML = "❌ Tracking Stopped";
+    }
 }
