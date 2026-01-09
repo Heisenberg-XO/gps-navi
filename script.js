@@ -1,6 +1,4 @@
-// Firebase database reference
-const trackingRef = database.ref("tracking/live");
-/**************** LOCATIONS (BANGALORE) ****************/
+/**************** LOCATION DATA (BANGALORE) ****************/
 const locations = {
     "Hebbal": [13.0358, 77.5970],
     "Malleshwaram": [13.0031, 77.5640],
@@ -25,10 +23,10 @@ const graph = {
 };
 
 /**************** MAP ****************/
-const map = L.map('map').setView([12.9716, 77.5946], 11);
+const map = L.map("map").setView([12.9716, 77.5946], 11);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap"
 }).addTo(map);
 
 /**************** ROUTING ****************/
@@ -87,8 +85,9 @@ function findRoute() {
     const result = dijkstra(start, end);
 
     result.path.forEach(loc => {
-        let marker = L.marker(locations[loc]).addTo(map).bindPopup(loc);
-        markers.push(marker);
+        markers.push(
+            L.marker(locations[loc]).addTo(map).bindPopup(loc)
+        );
     });
 
     routeLine = L.Routing.control({
@@ -96,7 +95,7 @@ function findRoute() {
         addWaypoints: false,
         draggableWaypoints: false,
         show: false,
-        lineOptions: { styles: [{ color: 'blue', weight: 6 }] }
+        lineOptions: { styles: [{ color: "blue", weight: 6 }] }
     }).addTo(map);
 
     document.getElementById("output").innerHTML = `
@@ -105,79 +104,103 @@ function findRoute() {
     `;
 }
 
-/**************** LIVE TRACKING + INTELLIGENCE ****************/
+/**************** LIVE TRACKING + FIREBASE ****************/
+
 let liveMarker = null;
 let watchID = null;
-let lastLat = null, lastLng = null, lastTime = null;
-let startTime = null;
-let totalDistance = 0;
 let pathLine = L.polyline([], { color: "red" }).addTo(map);
+
+// Stats
+let lastLat = null, lastLng = null, lastTime = null;
+let startTime = null, totalDistance = 0;
+
+// Firebase reference (created in HTML)
+const trackingRef = database.ref("tracking/live");
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
 
-    const a = Math.sin(dLat/2)**2 +
-              Math.cos(lat1*Math.PI/180) *
-              Math.cos(lat2*Math.PI/180) *
-              Math.sin(dLon/2)**2;
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
 
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
 function startLiveTracking() {
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported");
+        return;
+    }
+
+    // Reset stats
     lastLat = lastLng = lastTime = startTime = null;
     totalDistance = 0;
     pathLine.setLatLngs([]);
 
-    watchID = navigator.geolocation.watchPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const heading = pos.coords.heading ?? "N/A";
-        const now = Date.now();
+    watchID = navigator.geolocation.watchPosition(
+        pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const heading = pos.coords.heading ?? "N/A";
+            const now = Date.now();
 
-        if (!startTime) startTime = now;
+            if (!startTime) startTime = now;
 
-        if (lastLat !== null) {
-            totalDistance += calculateDistance(lastLat, lastLng, lat, lng);
-        }
+            if (lastLat !== null) {
+                totalDistance += calculateDistance(lastLat, lastLng, lat, lng);
+            }
 
-        let speed = 0;
-        if (lastTime) {
-            const dt = (now - lastTime) / 3600000;
-            if (dt > 0) speed = totalDistance / dt;
-        }
+            let speed = 0;
+            if (lastTime) {
+                const dt = (now - lastTime) / 3600000;
+                if (dt > 0) speed = totalDistance / dt;
+            }
 
-        lastLat = lat;
-        lastLng = lng;
-        lastTime = now;
+            lastLat = lat;
+            lastLng = lng;
+            lastTime = now;
 
-        if (!liveMarker) {
-            liveMarker = L.marker([lat, lng]).addTo(map)
-                .bindPopup("📍 Live Device");
-        } else {
-            liveMarker.setLatLng([lat, lng]);
-        }
+            // 🔥 WRITE TO FIREBASE
+            trackingRef.set({
+                lat,
+                lng,
+                speed,
+                distance: totalDistance,
+                heading,
+                timestamp: now
+            });
 
-        pathLine.addLatLng([lat, lng]);
-        map.setView([lat, lng], 15);
+            // Local marker
+            if (!liveMarker) {
+                liveMarker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup("📍 Live Device");
+            } else {
+                liveMarker.setLatLng([lat, lng]);
+            }
 
-        const elapsed = Math.floor((now - startTime) / 1000);
-        const min = Math.floor(elapsed / 60);
-        const sec = elapsed % 60;
+            pathLine.addLatLng([lat, lng]);
+            map.setView([lat, lng], 15);
 
-        document.getElementById("output").innerHTML = `
-            <b>Status:</b> Tracking Active ✅<br>
-            <b>Time:</b> ${min}m ${sec}s<br>
-            <b>Distance:</b> ${totalDistance.toFixed(2)} km<br>
-            <b>Speed:</b> ${speed.toFixed(2)} km/h<br>
-            <b>Heading:</b> ${heading}°<br>
-            <b>Updated:</b> ${new Date(now).toLocaleTimeString()}
-        `;
-    }, () => alert("Location permission denied"), {
-        enableHighAccuracy: true
-    });
+            const elapsed = Math.floor((now - startTime) / 1000);
+            const min = Math.floor(elapsed / 60);
+            const sec = elapsed % 60;
+
+            document.getElementById("output").innerHTML = `
+                <b>Status:</b> Tracking Active ✅<br>
+                <b>Time:</b> ${min}m ${sec}s<br>
+                <b>Distance:</b> ${totalDistance.toFixed(2)} km<br>
+                <b>Speed:</b> ${speed.toFixed(2)} km/h<br>
+                <b>Heading:</b> ${heading}°<br>
+                <b>Updated:</b> ${new Date(now).toLocaleTimeString()}
+            `;
+        },
+        () => alert("Location permission denied"),
+        { enableHighAccuracy: true }
+    );
 }
 
 function stopLiveTracking() {
@@ -188,3 +211,17 @@ function stopLiveTracking() {
     }
 }
 
+/**************** FIREBASE LIVE READ (VIEWER SIDE) ****************/
+trackingRef.on("value", snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    const { lat, lng } = data;
+
+    if (!liveMarker) {
+        liveMarker = L.marker([lat, lng]).addTo(map)
+            .bindPopup("📡 Tracked Device");
+    } else {
+        liveMarker.setLatLng([lat, lng]);
+    }
+});
