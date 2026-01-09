@@ -1,63 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Smart GPS Navigation & Live Tracking System</title>
+    <meta charset="UTF-8">
+    <title>GPS Navigation & Live Tracking System</title>
 
-    <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
 
-    <!-- Icons (UI upgrade) -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
-    <h1>📍 Smart GPS Navigation & Tracking System</h1>
-    <p class="subtitle">Shortest Path Routing & Real-Time Device Monitoring</p>
+    <h1>GPS Navigation System</h1>
+    <p>Bangalore City – Route & Live Device Tracking</p>
 
-    <!-- ROUTE SECTION -->
-    <div class="form">
-        <h3><i class="fa-solid fa-route"></i> Shortest Path Finder</h3>
+    <!-- ROUTE SECTION -->
+    <div class="form">
+        <h3>Shortest Path Finder</h3>
 
-        <label>Start Location</label>
-        <input type="text" id="start" placeholder="Eg: Hebbal">
+        <label>Start Location</label>
+        <input type="text" id="start" placeholder="Eg: Hebbal">
 
-        <label>Destination</label>
-        <input type="text" id="end" placeholder="Eg: Malleshwaram">
+        <label>Destination</label>
+        <input type="text" id="end" placeholder="Eg: Malleshwaram">
 
-        <button onclick="findRoute()">
-            <i class="fa-solid fa-map"></i> Find Shortest Route
-        </button>
-    </div>
+        <button onclick="findRoute()">Find Shortest Route</button>
+    </div>
 
-    <!-- LIVE TRACKING SECTION -->
-    <div class="form">
-        <h3><i class="fa-solid fa-location-crosshairs"></i> Live Device Tracking</h3>
+    <!-- LIVE TRACKING SECTION -->
+    <div class="form">
+        <h3>Live Device Tracking</h3>
+        <button onclick="startLiveTracking()">Track My Phone</button>
+        <p class="note">Allow GPS permission on your phone</p>
+    </div>
 
-        <button class="track-btn" onclick="startLiveTracking()">
-            <i class="fa-solid fa-play"></i> Start Tracking
-        </button>
-
-        <button class="stop-btn" onclick="stopLiveTracking()">
-            <i class="fa-solid fa-stop"></i> Stop Tracking
-        </button>
-
-        <p class="note">
-            <i class="fa-solid fa-circle-info"></i>
-            Allow GPS permission on your phone
-        </p>
-    </div>
-
-    <!-- LIVE OUTPUT PANEL -->
-    <div class="output" id="output">
-        <b>Status:</b> Idle 🕒
-    </div>
+    <div class="output" id="output"></div>
 </div>
 
 <!-- MAP -->
@@ -73,29 +53,3 @@
 </body>
 </html>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-
-<!-- Firebase SDKs (COMPAT VERSION – REQUIRED) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-<!-- Firebase Configuration -->
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBpuOPa5sDv4ieozsikboKoajw-g37R_Ug",
-    authDomain: "gps-tracker-56219.firebaseapp.com",
-    databaseURL: "https://gps-tracker-56219-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "gps-tracker-56219",
-    storageBucket: "gps-tracker-56219.appspot.com",
-    messagingSenderId: "466353287170",
-    appId: "1:466353287170:web:b4081ea1453bccf81e771b"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
-</script>
-
-<!-- Your main JS file (MUST BE LAST) -->
-<script src="script.js"></script>
