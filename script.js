@@ -1,3 +1,5 @@
+// Firebase database reference
+const trackingRef = database.ref("tracking/live");
 /**************** LOCATIONS (BANGALORE) ****************/
 const locations = {
     "Hebbal": [13.0358, 77.5970],
@@ -185,3 +187,4 @@ function stopLiveTracking() {
         document.getElementById("output").innerHTML = "❌ Tracking Stopped";
     }
 }
+
